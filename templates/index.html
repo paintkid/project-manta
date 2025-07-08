@@ -15,18 +15,10 @@
       integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
       crossorigin=""
     />
-
-    <!-- Custom Page Styles -->
-    <style>
-      /* Ensures the map container has a defined height, making it visible. */
-      #map {
-        height: 600px; /* Increased height for better viewing */
-      }
-      body {
-        font-family: sans-serif;
-        margin: 0;
-      }
-    </style>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='styles.css') }}"
+    />
   </head>
   <body>
     <!-- The div element where the Leaflet map will be rendered. -->
