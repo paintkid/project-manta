@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, render_template
 import pandas as pd
 
 app = Flask(__name__)
@@ -23,6 +23,10 @@ def load_vessel_data():
     return df_sample
 
 VESSEL_DATA = load_vessel_data()
+
+@app.route('/')
+def index():
+    return render_template('index.html')
 
 @app.route('/api/vessels')
 def get_vessels():

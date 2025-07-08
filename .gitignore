@@ -1,11 +1,22 @@
-# Python virtual environment
-venv/
-
-# VS Code settings
-.vscode/
-
-# Python cache
+# Byte-compiled / optimized / C extensions
 __pycache__/
+*.pyc
+*.pyo
+*.pyd
 
-# Environment variables
+# Virtual Environment
+venv/
+.venv/
+env/
 .env
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# IDE / Editor specific
+.vscode/
+.idea/
+
+# Large data files
+*.csv
