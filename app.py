@@ -13,6 +13,24 @@ app = Flask(__name__)
 # Data Processing and Analysis Functions
 # ==============================================================================
 
+def flag_loitering_vessels(vessels_df):
+    """Flags vessels that may be loitering based on their speed.
+
+    This function adds a boolean column 'is_anomalous' to the DataFrame.
+    A vessel is flagged as anomalous if its Speed Over Ground (SOG) is
+    less than 1 knot.
+
+    Args:
+        vessels_df (pd.DataFrame): The input DataFrame of vessel data.
+            Must contain an 'SOG' column.
+
+    Returns:
+        pd.DataFrame: The DataFrame with the new 'is_anomalous' column.
+    """
+    vessels_df['is_anomalous'] = (vessels_df['SOG'] < 1)
+    print("✅ Analyzed vessel data for loitering")
+    return vessels_df
+
 def load_vessel_data():
     """Loads and prepares the initial vessel data from a CSV file.
 
@@ -48,7 +66,10 @@ def load_vessel_data():
 print("--- MANTA Application Starting ---")
 
 print("1. Loading vessel data from source file...")
-VESSEL_DATA = load_vessel_data()
+raw_vessel_data = load_vessel_data()
+
+print("2. Analyzing data for anomalies...")
+VESSEL_DATA = flag_loitering_vessels(raw_vessel_data)
 
 print("3. Application ready. Starting web server...")
 print("------------------------------------")
