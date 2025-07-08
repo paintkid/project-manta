@@ -1,11 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <!-- ============================================================================== -->
+    <!-- METADATA AND EXTERNAL RESOURCES -->
+    <!-- ============================================================================== -->
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Map</title>
+    <title>MANTA Project - Vessel Map</title>
 
-    <!-- Leaflet Stylesheet Link -->
+    <!-- Leaflet CSS: Imports the visual styling for the map, markers, and popups. -->
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -13,40 +16,73 @@
       crossorigin=""
     />
 
+    <!-- Custom Page Styles -->
     <style>
+      /* Ensures the map container has a defined height, making it visible. */
       #map {
-        height: 400px;
+        height: 600px; /* Increased height for better viewing */
+      }
+      body {
+        font-family: sans-serif;
+        margin: 0;
       }
     </style>
   </head>
   <body>
+    <!-- The div element where the Leaflet map will be rendered. -->
     <div id="map"></div>
 
-    <!-- Load Leaflet Library -->
+    <!-- ============================================================================== -->
+    <!-- JAVASCRIPT LIBRARIES AND APPLICATION LOGIC -->
+    <!-- ============================================================================== -->
+
+    <!-- Leaflet JS Library: Imports the core functionality (L.map, L.marker, etc.). -->
     <script
       src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
       integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
       crossorigin=""
     ></script>
 
+    <!-- Main Application Script -->
     <script>
+      /**
+       * ------------------------------------------------------------------------
+       * MAP INITIALIZATION
+       * ------------------------------------------------------------------------
+       */
+
+      // Initialize the map and set its geographical center and zoom level.
       const map = L.map("map").setView([34.0, -77.0], 7);
 
+      // Add the tile layer (the background map image) from OpenStreetMap.
       L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 19,
         attribution: "© OpenStreetMap",
       }).addTo(map);
 
-      fetch("/api/vessels")
-        .then((response) => response.json())
-        .then((vessels) => {
-          console.log(vessels);
+      /**
+       * ------------------------------------------------------------------------
+       * DATA FETCHING AND VISUALIZATION
+       * ------------------------------------------------------------------------
+       */
 
+      // Fetch the vessel data from our backend API endpoint.
+      fetch("/api/vessels")
+        .then((response) => response.json()) // Parse the JSON response from the server.
+        .then((vessels) => {
+          // This block executes only after the data has been successfully fetched and parsed.
+          console.log("Data fetched successfully:", vessels);
+
+          // Loop through each vessel object in the received array.
           for (const vessel of vessels) {
+            // For each vessel, create a marker at its latitude and longitude.
             L.marker([vessel.LAT, vessel.LON])
-              .addTo(map)
-              .bindPopup(`MMSI: ${vessel.MMSI}`);
+              .addTo(map) // Add the marker to the map.
+              .bindPopup(`MMSI: ${vessel.MMSI}`); // Add a popup that shows the vessel's MMSI on click.
           }
+        })
+        .catch((error) => {
+          console.error("Error fetching vessel data:", error);
         });
     </script>
   </body>
