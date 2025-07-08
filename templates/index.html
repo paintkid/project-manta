@@ -62,6 +62,36 @@
 
       /**
        * ------------------------------------------------------------------------
+       * CUSTOM ICON DEFINITION
+       * ------------------------------------------------------------------------
+       */
+
+      // Base icon configuration shared by all colored markers.
+      // Defines size, anchor point, and popup positioning.
+      const baseIconConfig = {
+        shadowUrl:
+          "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [0, -41],
+      };
+
+      // Red marker icon used for highlighting vessels that are anomalous.
+      const redIcon = L.icon({
+        ...baseIconConfig,
+        iconUrl:
+          "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png",
+      });
+
+      // Blue marker icon for default use.
+      const blueIcon = L.icon({
+        ...baseIconConfig,
+        iconUrl:
+          "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png",
+      });
+
+      /**
+       * ------------------------------------------------------------------------
        * DATA FETCHING AND VISUALIZATION
        * ------------------------------------------------------------------------
        */
@@ -75,8 +105,9 @@
 
           // Loop through each vessel object in the received array.
           for (const vessel of vessels) {
+            const icon = vessel.is_anomalous ? redIcon : blueIcon;
             // For each vessel, create a marker at its latitude and longitude.
-            L.marker([vessel.LAT, vessel.LON])
+            L.marker([vessel.LAT, vessel.LON], { icon })
               .addTo(map) // Add the marker to the map.
               .bindPopup(`MMSI: ${vessel.MMSI}`); // Add a popup that shows the vessel's MMSI on click.
           }
