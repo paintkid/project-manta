@@ -88,15 +88,18 @@
        * ------------------------------------------------------------------------
        */
 
+      let allVesselsData = [];
+      let trackLine = null;
+
       // Fetch the vessel data from our backend API endpoint.
       fetch("/api/vessels")
         .then((response) => response.json()) // Parse the JSON response from the server.
         .then((vessels) => {
-          // This block executes only after the data has been successfully fetched and parsed.
-          console.log("Data fetched successfully:", vessels);
+          allVesselsData = vessels;
+          console.log("Data fetched and stored successfully");
 
           // Loop through each vessel object in the received array.
-          for (const vessel of vessels) {
+          for (const vessel of allVesselsData) {
             const icon = vessel.is_anomalous ? redIcon : blueIcon;
 
             const popupContent = `
@@ -112,9 +115,16 @@
               }
             `;
             // For each vessel, create a marker at its latitude and longitude.
-            L.marker([vessel.LAT, vessel.LON], { icon })
-              .addTo(map) // Add the marker to the map.
-              .bindPopup(popupContent); // Add a popup that shows the vessel's MMSI on click.
+            const marker = L.marker([vessel.LAT, vessel.LON], { icon });
+
+            // Add a click event listener to the marker.
+            marker.on("click", () => {
+              // This function will run every time a marker is clicked.
+              // For now, just log the vessel's MMSI to the console to test it.
+              console.log("Marker clicked for MMSI:", vessel.MMSI);
+            });
+
+            marker.addTo(map).bindPopup(popupContent);
           }
         })
         .catch((error) => {
