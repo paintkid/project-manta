@@ -3,6 +3,7 @@
 # ==============================================================================
 from flask import Flask, jsonify, render_template
 import pandas as pd
+from math import radians, sin, cos, sqrt, atan2
 
 # ==============================================================================
 # Flask Application Initialization
@@ -82,6 +83,20 @@ def load_vessel_data():
 
     print("✅ Vessel data loaded and ready.")
     return df_sample
+
+def haversine_distance(lat1, lon1, lat2, lon2):
+    """Calculates the distance between two points on Earth in nautical miles.
+
+    Args:
+        lat1 (float): Latitude of the first point.
+        lon1 (float): Longitude of the first point.
+        lat2 (float): Latitude of the second point.
+        lon2 (float): Longitude of the second point.
+
+    Returns:
+        float: The distance in nautical miles.
+    """
+    
 
 # ==============================================================================
 # Application Startup Sequence
