@@ -13,6 +13,29 @@ app = Flask(__name__)
 # Data Processing and Analysis Functions
 # ==============================================================================
 
+def load_port_data():
+    """Loads and prepares the world port location data.
+
+    This function reads port data from a CSV file, selects only the
+    necessary columns, and cleans the data for use in distance calculations.
+
+    Returns:
+        pd.DataFrame: A DataFrame containing port names, latitudes, and
+                      longitudes, or an empty DataFrame if the file is not found.
+    """
+    port_file_path = 'ports.csv'
+    required_cols = ['PORT_NAME', 'LATITUDE', 'LONGITUDE']
+    try:
+        df = pd.read_csv(port_file_path, usecols=required_cols)
+    except FileNotFoundError:
+        print(f"ERROR: file {port_file_path} was not found.")
+        return pd.DataFrame()
+
+    df_clean = df.dropna()
+
+    print("✅ Port data loaded and ready.")
+    return df_clean
+
 def flag_loitering_vessels(vessels_df):
     """Flags vessels that may be loitering based on their speed.
 
@@ -42,13 +65,13 @@ def load_vessel_data():
         pd.DataFrame: A cleaned and sampled DataFrame of vessel data,
                       or an empty DataFrame if the source file is not found.
     """
-    csv_file_path = 'AIS_2024_01_01 2.csv'
+    vessel_data_file_path = 'AIS_2024_01_01 2.csv'
 
     required_cols = ['MMSI', 'BaseDateTime', 'LAT', 'LON', 'SOG', 'COG']
     try:
-        df = pd.read_csv(csv_file_path, usecols=required_cols)
+        df = pd.read_csv(vessel_data_file_path, usecols=required_cols)
     except FileNotFoundError:
-        print(f"ERROR: file {csv_file_path} was not found.")
+        print(f"ERROR: file {vessel_data_file_path} was not found.")
         return pd.DataFrame()
     
     df_clean = df.dropna()
@@ -65,13 +88,16 @@ def load_vessel_data():
 # ==============================================================================
 print("--- MANTA Application Starting ---")
 
-print("1. Loading vessel data from source file...")
+print("1. Loading port data from source file...")
+PORT_DATA = load_port_data
+
+print("2. Loading vessel data from source file...")
 raw_vessel_data = load_vessel_data()
 
-print("2. Analyzing data for anomalies...")
+print("3. Analyzing data for anomalies...")
 VESSEL_DATA = flag_loitering_vessels(raw_vessel_data)
 
-print("3. Application ready. Starting web server...")
+print("4. Application ready. Starting web server...")
 print("------------------------------------")
 
 # ==============================================================================
