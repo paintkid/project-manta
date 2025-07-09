@@ -87,9 +87,34 @@
        * DATA FETCHING AND VISUALIZATION
        * ------------------------------------------------------------------------
        */
-
       let allVesselsData = [];
       let trackLine = null;
+
+      function drawVesselTrack(mmsi) {
+        // If a track line already exists, remove it from the map.
+        if (trackLine != null) {
+          map.removeLayer(trackLine);
+        }
+
+        // Filter the main data array to get all points for the selected vessel.
+        const vesselTrackPoints = allVesselsData.filter(
+          (vessel) => vessel.MMSI == mmsi
+        );
+
+        if (vesselTrackPoints.length < 2) {
+          console.log("   - Not enough points to draw a track line.");
+          return; // Stop the function here.
+        }
+
+        // Create a new array containing just the [lat, lon] pairs for the polyline.
+        const latLngs = vesselTrackPoints.map((point) => [
+          point.LAT,
+          point.LON,
+        ]);
+
+        // Create the new polyline, add it to the map, and store it so we can remove it later.
+        trackLine = L.polyline(latLngs, { color: "red", weight: 2 }).addTo(map);
+      }
 
       // Fetch the vessel data from our backend API endpoint.
       fetch("/api/vessels")
@@ -98,11 +123,14 @@
           allVesselsData = vessels;
           console.log("Data fetched and stored successfully");
 
+          const plottedMmsis = new Set();
+
           // Loop through each vessel object in the received array.
           for (const vessel of allVesselsData) {
-            const icon = vessel.is_anomalous ? redIcon : blueIcon;
+            if (!plottedMmsis.has(vessel.MMSI)) {
+              const icon = vessel.is_anomalous ? redIcon : blueIcon;
 
-            const popupContent = `
+              const popupContent = `
               <strong>MMSI:</strong> ${vessel.MMSI}<br>
               <strong>Speed:</strong> ${vessel.SOG.toFixed(1)} knots<br>
               <strong>Distance to Port:</strong> ${vessel.dist_to_nearest_port.toFixed(
@@ -114,17 +142,18 @@
                   : ""
               }
             `;
-            // For each vessel, create a marker at its latitude and longitude.
-            const marker = L.marker([vessel.LAT, vessel.LON], { icon });
+              // For each vessel, create a marker at its latitude and longitude.
+              const marker = L.marker([vessel.LAT, vessel.LON], { icon });
 
-            // Add a click event listener to the marker.
-            marker.on("click", () => {
-              // This function will run every time a marker is clicked.
-              // For now, just log the vessel's MMSI to the console to test it.
-              console.log("Marker clicked for MMSI:", vessel.MMSI);
-            });
+              // Add a click event listener to the marker.
+              marker.on("click", () => {
+                drawVesselTrack(vessel.MMSI);
+              });
 
-            marker.addTo(map).bindPopup(popupContent);
+              marker.addTo(map).bindPopup(popupContent);
+
+              plottedMmsis.add(vessel.MMSI);
+            }
           }
         })
         .catch((error) => {
