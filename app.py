@@ -91,14 +91,34 @@ def load_vessel_data():
 
     required_cols = ['MMSI', 'BaseDateTime', 'LAT', 'LON', 'SOG', 'COG']
     try:
-        df = pd.read_csv(vessel_data_file_path, usecols=required_cols, nrows=2000)
+        df = pd.read_csv(vessel_data_file_path, usecols=required_cols, nrows=200000)
     except FileNotFoundError:
         print(f"ERROR: file {vessel_data_file_path} was not found.")
         return pd.DataFrame()
     
     df_clean = df.dropna()
+    print(f"   - Initial data loaded with {len(df_clean)} rows.")
+
+    print("   - Identifying moving vessels...")
+    variance = df_clean.groupby('MMSI')[['LAT', 'LON']].std().sum(axis=1)
+    moving_mmsis = variance[variance > 0.001].index.tolist()
+
+    if not moving_mmsis:
+        print("⚠️ No moving vessels found in the data sample. Try increasing nrows.")
+        # Fallback to the old method if no moving vessels are found
+        unique_mmsis = df_clean['MMSI'].unique()
+        sample_size = min(50, len(unique_mmsis))
+        sampled_mmsis = pd.Series(unique_mmsis).sample(n=sample_size, random_state=1).tolist()
+    else:
+        # 2. Randomly select from the list of ONLY the moving vessels.
+        sample_size = min(50, len(moving_mmsis))
+        sampled_mmsis = pd.Series(moving_mmsis).sample(n=sample_size, random_state=1).tolist()
+
+    # 3. Filter the original DataFrame to get all rows for the selected MMSIs.
+    df_final_sample = df_clean[df_clean['MMSI'].isin(sampled_mmsis)]
+
     print("✅ Vessel data loaded and ready.")
-    return df_clean
+    return df_final_sample  
 
 # --- Main Analysis Function ---
 def flag_loitering_vessels(vessels_df, ports_df):
