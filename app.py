@@ -4,6 +4,7 @@
 from flask import Flask, jsonify, render_template
 import pandas as pd
 from math import radians, sin, cos, sqrt, atan2
+from scipy.spatial import KDTree
 
 # ==============================================================================
 # Flask Application Initialization
@@ -90,23 +91,18 @@ def load_vessel_data():
 
     required_cols = ['MMSI', 'BaseDateTime', 'LAT', 'LON', 'SOG', 'COG']
     try:
-        df = pd.read_csv(vessel_data_file_path, usecols=required_cols)
+        df = pd.read_csv(vessel_data_file_path, usecols=required_cols, nrows=20000)
     except FileNotFoundError:
         print(f"ERROR: file {vessel_data_file_path} was not found.")
         return pd.DataFrame()
     
     df_clean = df.dropna()
-    if len(df_clean) > 1000:
-        df_sample = df_clean.sample(n=1000, random_state=1)
-    else:
-        df_sample = df_clean
-
     print("✅ Vessel data loaded and ready.")
-    return df_sample
+    return df_clean
 
 # --- Main Analysis Function ---
 def flag_loitering_vessels(vessels_df, ports_df):
-    """Flags vessels that are loitering far from any known port.
+    """Flags vessels that are loitering far from any known port using spatial index.
 
     Args:
         vessels_df (pd.DataFrame): DataFrame of vessel data.
@@ -122,14 +118,15 @@ def flag_loitering_vessels(vessels_df, ports_df):
     
     DISTANCE_THRESHOLD_NM = 50 # In nautial miles
 
-    def find_nearest_port_distance(vessel_row):
-        """Calculates the minimum distance from a single vessel to any port."""
-        lat, lon = vessel_row['LAT'], vessel_row['LON']
-        distances = [haversine_distance(lat, lon, port_row['LATITUDE'], port_row['LONGITUDE']) for index, port_row in ports_df.iterrows()]
-        return min(distances) if distances else float('inf')
+    port_coords = ports_df[['LATITUDE', 'LONGITUDE']].values
+    port_tree = KDTree(port_coords)
+
+    vessel_coords = vessels_df[['LAT', 'LON']].values
+
+    distances, _ = port_tree.query(vessel_coords, k=1)
+    vessels_df['dist_to_nearest_port'] = distances * 60
     
     print("   - Calculating distance to nearest port for each vessel...")
-    vessels_df['dist_to_nearest_port'] = vessels_df.apply(find_nearest_port_distance, axis=1)
 
     vessels_df['is_anomalous'] = (vessels_df['SOG'] < 1) & (vessels_df['dist_to_nearest_port'] > DISTANCE_THRESHOLD_NM)
 
