@@ -98,10 +98,23 @@
           // Loop through each vessel object in the received array.
           for (const vessel of vessels) {
             const icon = vessel.is_anomalous ? redIcon : blueIcon;
+
+            const popupContent = `
+              <strong>MMSI:</strong> ${vessel.MMSI}<br>
+              <strong>Speed:</strong> ${vessel.SOG.toFixed(1)} knots<br>
+              <strong>Distance to Port:</strong> ${vessel.dist_to_nearest_port.toFixed(
+                1
+              )}<br>
+              ${
+                vessel.is_anomalous
+                  ? `<strong>Status:</strong> <span style="color: red;">Anomalous (Loitering)</span><br>`
+                  : ""
+              }
+            `;
             // For each vessel, create a marker at its latitude and longitude.
             L.marker([vessel.LAT, vessel.LON], { icon })
               .addTo(map) // Add the marker to the map.
-              .bindPopup(`MMSI: ${vessel.MMSI}`); // Add a popup that shows the vessel's MMSI on click.
+              .bindPopup(popupContent); // Add a popup that shows the vessel's MMSI on click.
           }
         })
         .catch((error) => {
