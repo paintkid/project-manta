@@ -91,7 +91,7 @@ def load_vessel_data():
 
     required_cols = ['MMSI', 'BaseDateTime', 'LAT', 'LON', 'SOG', 'COG']
     try:
-        df = pd.read_csv(vessel_data_file_path, usecols=required_cols, nrows=20000)
+        df = pd.read_csv(vessel_data_file_path, usecols=required_cols, nrows=2000)
     except FileNotFoundError:
         print(f"ERROR: file {vessel_data_file_path} was not found.")
         return pd.DataFrame()
