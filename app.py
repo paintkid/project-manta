@@ -120,7 +120,7 @@ def load_vessel_data():
     print("✅ Vessel data loaded and ready.")
     return df_final_sample  
 
-# --- Main Analysis Function ---
+# --- Analysis Functions ---
 def flag_loitering_vessels(vessels_df, ports_df):
     """Flags vessels that are loitering far from any known port using spatial index.
 
@@ -136,11 +136,13 @@ def flag_loitering_vessels(vessels_df, ports_df):
         vessels_df['is_anomalous'] = (vessels_df['SOG'] < 1)
         return vessels_df
     
-    DISTANCE_THRESHOLD_NM = 50 # In nautial miles
+    DISTANCE_THRESHOLD_NM = 5 # Lowered for testing purposes
 
+    print("   - Building spatial index for ports...")
     port_coords = ports_df[['LATITUDE', 'LONGITUDE']].values
     port_tree = KDTree(port_coords)
 
+    print("   - Finding nearest port for each vessel...")
     vessel_coords = vessels_df[['LAT', 'LON']].values
 
     distances, _ = port_tree.query(vessel_coords, k=1)
@@ -150,7 +152,43 @@ def flag_loitering_vessels(vessels_df, ports_df):
 
     vessels_df['is_anomalous'] = (vessels_df['SOG'] < 1) & (vessels_df['dist_to_nearest_port'] > DISTANCE_THRESHOLD_NM)
 
+    loitering_count = vessels_df['is_anomalous'].sum()
+    print(f"   - Found {loitering_count} potential loitering events.")
+
     print("✅ Analyzed vessel data for contextual loitering")
+    return vessels_df
+
+def flag_going_dark_events(vessels_df):
+    """Analyzes vessel data to find potential 'going dark' events.
+
+    This function calculates the time difference between consecutive pings
+    for each vessel. If a gap is larger than a set threshold, it flags
+    the vessel.
+
+    Args:
+        vessels_df (pd.DataFrame): The input DataFrame of vessel data.
+            Must contain 'MMSI' and 'BaseDateTime' columns.
+
+    Returns:
+        pd.DataFrame: The DataFrame with a new 'is_dark' boolean column.
+    """
+    TIME_THRESHOLD_HOURS = 0.1 # Lowered for testing purposes
+    TIME_THRESHOLD_SECONDS = TIME_THRESHOLD_HOURS * 3600
+
+    vessels_df['BaseDateTime'] = pd.to_datetime(vessels_df['BaseDateTime'], errors='coerce')
+    vessels_df.sort_values(by=['MMSI', 'BaseDateTime'], inplace=True)
+
+    time_gaps = vessels_df.groupby('MMSI')['BaseDateTime'].diff().dt.total_seconds()
+    vessels_df['time_gap_seconds'] = time_gaps.fillna(0)
+    
+    max_gap_found = vessels_df['time_gap_seconds'].max()
+    print(f"   - Max time gap found: {max_gap_found / 3600:.2f} hours")
+
+    vessels_df['is_dark'] = vessels_df['time_gap_seconds'] > TIME_THRESHOLD_SECONDS
+    dark_count = vessels_df['is_dark'].sum()
+    print(f"   - Found {dark_count} potential 'going dark' events.")
+
+    print("✅ Analyzed vessel data for 'going dark' events.")
     return vessels_df
 
 # ==============================================================================
@@ -165,7 +203,16 @@ print("2. Loading vessel data from source file...")
 raw_vessel_data = load_vessel_data()
 
 print("3. Analyzing data for anomalies...")
-VESSEL_DATA = flag_loitering_vessels(raw_vessel_data, PORT_DATA)
+# Step 3a: Flag for loitering
+loitering_data = flag_loitering_vessels(raw_vessel_data, PORT_DATA)
+
+# Step 3b: Flag for going dark events
+dark_event_data = flag_going_dark_events(loitering_data)
+
+# Step 3c: Combine the anomaly flags.
+dark_event_data['is_anomalous'] = dark_event_data['is_anomalous'] | dark_event_data['is_dark']
+
+VESSEL_DATA = dark_event_data
 
 print("4. Application ready. Starting web server...")
 print("------------------------------------")

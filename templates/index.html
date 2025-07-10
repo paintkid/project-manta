@@ -21,9 +21,72 @@
     />
   </head>
   <body>
+    <!-- ============================================================================== -->
+    <!-- SIDEBAR -->
+    <!-- ============================================================================== -->
     <aside class="sidebar">
-      <header class="sidrbar-header"><h1>MANTA</h1></header>
+      <div class="sidebar-header">
+        <h1>MANTA</h1>
+      </div>
+
+      <nav class="sidebar-nav">
+        <ul>
+          <li>
+            <a href="#" class="active">
+              <!-- Dashboard Icon -->
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <path
+                  d="M10.5,4.5a6,6,0,1,0,6,6A6,6,0,0,0,10.5,4.5ZM5.41,18.59a9,9,0,0,1,10.18,0,1,1,0,0,0,1.41-1.41,11,11,0,0,0-13,0,1,1,0,0,0,1.41,1.41Z"
+                />
+              </svg>
+              Dashboard
+            </a>
+          </li>
+          <li>
+            <a href="#">
+              <!-- Anomaly/Alert Icon -->
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M5.25 9a6.75 6.75 0 0113.5 0v.75c0 2.123.8 4.057 2.118 5.52a.75.75 0 01-.297 1.206c-1.544.57-3.16.99-4.831 1.243a3.75 3.75 0 11-7.48 0c-1.67-.253-3.287-.673-4.831-1.243a.75.75 0 01-.297-1.206C4.45 13.807 5.25 11.873 5.25 9.75V9zm4.502 8.9a2.25 2.25 0 104.496 0H9.752z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+              Anomalies
+            </a>
+          </li>
+          <li>
+            <a href="#">
+              <!-- Search Icon -->
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M10.5 3.75a6.75 6.75 0 100 13.5 6.75 6.75 0 000-13.5zM2.25 10.5a8.25 8.25 0 1114.59 5.28l4.69 4.69a.75.75 0 11-1.06 1.06l-4.69-4.69A8.25 8.25 0 012.25 10.5z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+              Search
+            </a>
+          </li>
+        </ul>
+      </nav>
     </aside>
+
+    <!-- ============================================================================== -->
+    <!-- MAIN CONTENT (MAP) -->
+    <!-- ============================================================================== -->
     <div class="main-content">
       <div id="map"></div>
     </div>
@@ -38,6 +101,7 @@
       integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
       crossorigin=""
     ></script>
+    <script src="https://unpkg.com/leaflet-providers@1.13.0/leaflet-providers.js"></script>
 
     <!-- Main Application Script -->
     <script>
@@ -48,11 +112,21 @@
        */
 
       // Initialize the map and set its geographical center and zoom level.
-      const map = L.map("map").setView([34.0, -77.0], 7);
+      const worldBounds = L.latLngBounds(
+        L.latLng(-90, -180),
+        L.latLng(90, 180)
+      );
+      const map = L.map("map", {
+        minZoom: 3,
+        maxBounds: worldBounds, // Add this line
+        maxBoundsViscosity: 1.0, // This makes the boundary "solid"
+      }).setView([34.0, -77.0], 7);
 
       // Add the tile layer (the background map image) from OpenStreetMap.
 
-      const baseLayer = L.tileLayer.provider("CartoDB.DarkMatter");
+      const baseLayer = L.tileLayer.provider("Stadia.AlidadeSmoothDark", {
+        noWrap: true,
+      });
       baseLayer.addTo(map);
 
       /**
@@ -125,6 +199,8 @@
         .then((vessels) => {
           allVesselsData = vessels;
 
+          map.invalidateSize();
+
           const latestVesselData = new Map();
           for (const vessel of vessels) {
             latestVesselData.set(vessel.MMSI, vessel);
@@ -141,8 +217,13 @@
                 1
               )} NM<br>
               ${
-                vessel.is_anomalous
+                vessel.is_anomalous && !vessel.is_dark
                   ? `<strong>Status:</strong> <span style="color: red;">Anomalous (Loitering)</span><br>`
+                  : ""
+              }
+              ${
+                vessel.is_dark
+                  ? `<strong>Status:</strong> <span style="color: red;">Signal Lost (Gone Dark)</span><br>`
                   : ""
               }
             `;

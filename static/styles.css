@@ -1,16 +1,107 @@
 /* ============================================================================== */
-/* BASE STYLES */
+/* CSS VARIABLES (NEW "OPERATOR" DARK THEME) */
 /* ============================================================================== */
-body {
-  font-family: sans-serif;
-  margin: 0;
-  overflow: hidden;
+:root {
+  --bg-primary: #020617; /* A very dark, almost black slate */
+  --bg-secondary: #0f172a; /* The main sidebar background color */
+  --border-color: #1e293b; /* A slightly lighter slate for borders */
+  --text-primary: #e2e8f0; /* A soft white for primary text */
+  --text-secondary: #94a3b8; /* A muted gray for secondary text */
+  --accent-color: #4ade80; /* A vibrant, matrix-like green */
 }
 
 /* ============================================================================== */
-/* MAP CONTAINER STYLES */
+/* BASE & LAYOUT STYLES */
 /* ============================================================================== */
-#map {
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif;
+  margin: 0;
   height: 100vh;
   width: 100vw;
+  /* Use the primary background color for the main area */
+  background-color: var(--bg-primary);
+  display: flex;
+  overflow: hidden;
+}
+
+.sidebar {
+  width: 260px;
+  /* Use the secondary background color for the sidebar */
+  background-color: var(--bg-secondary);
+  border-right: 1px solid var(--border-color); /* Add a subtle border */
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+.main-content {
+  flex-grow: 1;
+  position: relative;
+}
+
+#map {
+  height: 100%;
+  width: 100%;
+}
+
+/* ============================================================================== */
+/* SIDEBAR CONTENT STYLES */
+/* ============================================================================== */
+.sidebar-header {
+  padding-bottom: 20px; /* Adds space between the text and the border */
+  margin-bottom: 20px; /* Adds space between the border and the nav links below it */
+  border-bottom: 1px solid var(--border-color); /* Creates the separator line */
+}
+
+.sidebar-header h1 {
+  color: var(--text-primary); /* Use our primary text color */
+  font-size: 1.8em;
+  font-weight: 700;
+  margin: 0;
+  text-align: left; /* Align to the left like the reference */
+}
+
+.sidebar-nav {
+  flex-grow: 1; /* This is a nice touch that pushes any footer items to the bottom */
+}
+
+.sidebar-nav ul {
+  list-style-type: none; /* Removes the default bullet points */
+  padding: 0;
+  margin: 0;
+}
+
+.sidebar-nav a {
+  display: flex; /* Aligns the icon and text in a row */
+  align-items: center; /* Vertically centers the icon and text */
+  gap: 15px; /* Creates space between the icon and the text */
+  padding: 12px;
+  margin-bottom: 8px; /* Adds space between the nav items */
+  border-radius: 8px; /* Creates the rounded "pill" shape */
+  text-decoration: none; /* Removes the default underline */
+  color: var(--text-secondary); /* Use our muted gray for non-active links */
+  font-weight: 600;
+  transition: all 0.2s ease; /* Adds a smooth transition for hover effects */
+}
+
+.sidebar-nav a:hover {
+  color: var(--text-primary); /* Make text lighter on hover */
+  background-color: var(--border-color); /* Add a subtle background on hover */
+}
+
+.sidebar-nav a.active {
+  background-color: var(
+    --accent-color
+  ); /* Use our green accent color for the active link */
+  color: var(--text-primary); /* Make the text on the active link lighter */
+}
+
+.sidebar-nav a svg {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  fill: currentColor; /* This makes the icon's color match the text color */
 }
