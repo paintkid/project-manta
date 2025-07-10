@@ -21,8 +21,12 @@
     />
   </head>
   <body>
-    <!-- The div element where the Leaflet map will be rendered. -->
-    <div id="map"></div>
+    <aside class="sidebar">
+      <header class="sidrbar-header"><h1>MANTA</h1></header>
+    </aside>
+    <div class="main-content">
+      <div id="map"></div>
+    </div>
 
     <!-- ============================================================================== -->
     <!-- JAVASCRIPT LIBRARIES AND APPLICATION LOGIC -->
@@ -47,10 +51,9 @@
       const map = L.map("map").setView([34.0, -77.0], 7);
 
       // Add the tile layer (the background map image) from OpenStreetMap.
-      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 19,
-        attribution: "© OpenStreetMap",
-      }).addTo(map);
+
+      const baseLayer = L.tileLayer.provider("CartoDB.DarkMatter");
+      baseLayer.addTo(map);
 
       /**
        * ------------------------------------------------------------------------
