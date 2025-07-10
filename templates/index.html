@@ -118,42 +118,39 @@
 
       // Fetch the vessel data from our backend API endpoint.
       fetch("/api/vessels")
-        .then((response) => response.json()) // Parse the JSON response from the server.
+        .then((response) => response.json())
         .then((vessels) => {
           allVesselsData = vessels;
-          console.log("Data fetched and stored successfully");
 
-          const plottedMmsis = new Set();
+          const latestVesselData = new Map();
+          for (const vessel of vessels) {
+            latestVesselData.set(vessel.MMSI, vessel);
+          }
+          const uniqueVessels = Array.from(latestVesselData.values());
 
-          // Loop through each vessel object in the received array.
-          for (const vessel of allVesselsData) {
-            if (!plottedMmsis.has(vessel.MMSI)) {
-              const icon = vessel.is_anomalous ? redIcon : blueIcon;
+          for (const vessel of uniqueVessels) {
+            const icon = vessel.is_anomalous ? redIcon : blueIcon;
 
-              const popupContent = `
+            const popupContent = `
               <strong>MMSI:</strong> ${vessel.MMSI}<br>
               <strong>Speed:</strong> ${vessel.SOG.toFixed(1)} knots<br>
               <strong>Distance to Port:</strong> ${vessel.dist_to_nearest_port.toFixed(
                 1
-              )}<br>
+              )} NM<br>
               ${
                 vessel.is_anomalous
                   ? `<strong>Status:</strong> <span style="color: red;">Anomalous (Loitering)</span><br>`
                   : ""
               }
             `;
-              // For each vessel, create a marker at its latitude and longitude.
-              const marker = L.marker([vessel.LAT, vessel.LON], { icon });
 
-              // Add a click event listener to the marker.
-              marker.on("click", () => {
-                drawVesselTrack(vessel.MMSI);
-              });
-
-              marker.addTo(map).bindPopup(popupContent);
-
-              plottedMmsis.add(vessel.MMSI);
-            }
+            const marker = L.marker([vessel.LAT, vessel.LON], { icon });
+            marker.mmsi = vessel.MMSI;
+            marker.on("click", function (e) {
+              map.setView(this.getLatLng(), 17);
+              drawVesselTrack(this.mmsi);
+            });
+            marker.addTo(map).bindPopup(popupContent);
           }
         })
         .catch((error) => {
