@@ -121,74 +121,40 @@ def load_vessel_data():
     return df_final_sample  
 
 # --- Analysis Functions ---
-def flag_loitering_vessels(vessels_df, ports_df):
-    """Flags vessels that are loitering far from any known port using spatial index.
-
-    Args:
-        vessels_df (pd.DataFrame): DataFrame of vessel data.
-        ports_df (pd.DataFrame): DataFrame of port location data.
-
-    Returns:
-        pd.DataFrame: The vessel DataFrame with a new 'is_anomalous' column.
+def analyze_vessel_anomalies(vessels_df, ports_df):
     """
-    if ports_df.empty:
-        print("⚠️ Port data is empty. Skipping distance analysis.")
-        vessels_df['is_anomalous'] = (vessels_df['SOG'] < 1)
-        return vessels_df
-    
-    DISTANCE_THRESHOLD_NM = 5 # Lowered for testing purposes
-
-    print("   - Building spatial index for ports...")
-    port_coords = ports_df[['LATITUDE', 'LONGITUDE']].values
-    port_tree = KDTree(port_coords)
-
-    print("   - Finding nearest port for each vessel...")
-    vessel_coords = vessels_df[['LAT', 'LON']].values
-
-    distances, _ = port_tree.query(vessel_coords, k=1)
-    vessels_df['dist_to_nearest_port'] = distances * 60
-    
-    print("   - Calculating distance to nearest port for each vessel...")
-
-    vessels_df['is_anomalous'] = (vessels_df['SOG'] < 1) & (vessels_df['dist_to_nearest_port'] > DISTANCE_THRESHOLD_NM)
-
-    loitering_count = vessels_df['is_anomalous'].sum()
-    print(f"   - Found {loitering_count} potential loitering events.")
-
-    print("✅ Analyzed vessel data for contextual loitering")
-    return vessels_df
-
-def flag_going_dark_events(vessels_df):
-    """Analyzes vessel data to find potential 'going dark' events.
-
-    This function calculates the time difference between consecutive pings
-    for each vessel. If a gap is larger than a set threshold, it flags
-    the vessel.
-
-    Args:
-        vessels_df (pd.DataFrame): The input DataFrame of vessel data.
-            Must contain 'MMSI' and 'BaseDateTime' columns.
-
-    Returns:
-        pd.DataFrame: The DataFrame with a new 'is_dark' boolean column.
+    Main analysis pipeline. Flags vessels for various anomalous behaviors.
     """
-    TIME_THRESHOLD_HOURS = 0.1 # Lowered for testing purposes
+    # --- Loitering Analysis ---
+    if not ports_df.empty:
+        DISTANCE_THRESHOLD_NM = 5 # Using sensitive threshold for testing
+        port_coords = ports_df[['LATITUDE', 'LONGITUDE']].values
+        port_tree = KDTree(port_coords)
+        vessel_coords = vessels_df[['LAT', 'LON']].values
+        distances, _ = port_tree.query(vessel_coords, k=1)
+        vessels_df['dist_to_nearest_port'] = distances * 60
+        vessels_df['is_loitering'] = (vessels_df['SOG'] < 1) & (vessels_df['dist_to_nearest_port'] > DISTANCE_THRESHOLD_NM)
+        loitering_count = vessels_df['is_loitering'].sum()
+        print(f"   - Found {loitering_count} potential loitering events.")
+    else:
+        vessels_df['is_loitering'] = False
+
+    # --- Going Dark Analysis ---
+    TIME_THRESHOLD_HOURS = 0.1 # Using sensitive threshold for testing
     TIME_THRESHOLD_SECONDS = TIME_THRESHOLD_HOURS * 3600
-
     vessels_df['BaseDateTime'] = pd.to_datetime(vessels_df['BaseDateTime'], errors='coerce')
     vessels_df.sort_values(by=['MMSI', 'BaseDateTime'], inplace=True)
-
     time_gaps = vessels_df.groupby('MMSI')['BaseDateTime'].diff().dt.total_seconds()
     vessels_df['time_gap_seconds'] = time_gaps.fillna(0)
-    
-    max_gap_found = vessels_df['time_gap_seconds'].max()
-    print(f"   - Max time gap found: {max_gap_found / 3600:.2f} hours")
-
     vessels_df['is_dark'] = vessels_df['time_gap_seconds'] > TIME_THRESHOLD_SECONDS
     dark_count = vessels_df['is_dark'].sum()
     print(f"   - Found {dark_count} potential 'going dark' events.")
 
-    print("✅ Analyzed vessel data for 'going dark' events.")
+    # --- Final Anomaly Flag ---
+    # Combine all individual flags into the final 'is_anomalous' column.
+    vessels_df['is_anomalous'] = vessels_df['is_loitering'] | vessels_df['is_dark']
+    
+    print("✅ Analysis complete.")
     return vessels_df
 
 # ==============================================================================
@@ -203,16 +169,7 @@ print("2. Loading vessel data from source file...")
 raw_vessel_data = load_vessel_data()
 
 print("3. Analyzing data for anomalies...")
-# Step 3a: Flag for loitering
-loitering_data = flag_loitering_vessels(raw_vessel_data, PORT_DATA)
-
-# Step 3b: Flag for going dark events
-dark_event_data = flag_going_dark_events(loitering_data)
-
-# Step 3c: Combine the anomaly flags.
-dark_event_data['is_anomalous'] = dark_event_data['is_anomalous'] | dark_event_data['is_dark']
-
-VESSEL_DATA = dark_event_data
+VESSEL_DATA = analyze_vessel_anomalies(raw_vessel_data, PORT_DATA)
 
 print("4. Application ready. Starting web server...")
 print("------------------------------------")
@@ -241,6 +198,14 @@ def get_anomalies():
     if VESSEL_DATA.empty:
         return jsonify([])
 
-    anomalous_vessels = VESSEL_DATA[VESSEL_DATA['is_anomalous'] == True]
-    vessels_json = anomalous_vessels.to_dict(orient='records')
+    # Find all unique MMSIs that have at least one anomalous point. 
+    anomalous_mmsis = VESSEL_DATA[VESSEL_DATA['is_anomalous'] == True]['MMSI'].unique()
+    
+    # Filter DataFrame to get all rows for these anomalous vessels.
+    anomalous_vessels_df = VESSEL_DATA[VESSEL_DATA['MMSI'].isin(anomalous_mmsis)]
+    
+    # Get most recent data point for each unique anomalous vessel.
+    latest_anomalies = anomalous_vessels_df.loc[anomalous_vessels_df.groupby('MMSI')['BaseDateTime'].idxmax()]
+    
+    vessels_json = latest_anomalies.to_dict(orient='records')
     return jsonify(vessels_json)

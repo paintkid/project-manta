@@ -105,3 +105,31 @@ body {
   flex-shrink: 0;
   fill: currentColor; /* This makes the icon's color match the text color */
 }
+
+.anomaly-list {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border-color);
+}
+
+.list-header {
+  color: var(--text-secondary);
+  font-size: 0.9em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 12px 0;
+}
+
+.anomaly-item {
+  color: var(--text-secondary);
+  padding: 8px;
+  border-radius: 4px;
+  font-size: 0.9em;
+  cursor: pointer;
+}
+
+.anomaly-item:hover {
+  background-color: var(--border-color);
+  color: var(--text-primary);
+}

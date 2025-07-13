@@ -81,6 +81,10 @@
             </a>
           </li>
         </ul>
+        <div class="anomaly-list">
+          <h3 class="list-header">Flagged Vessels</h3>
+          <ul id="anomaly-list-ul"></ul>
+        </div>
       </nav>
     </aside>
 
@@ -107,28 +111,24 @@
     <script>
       /**
        * ------------------------------------------------------------------------
-       * MAP INITIALIZATION
+       * MAP INITIALIZATION AND GLOBAL VARIABLES
        * ------------------------------------------------------------------------
        */
-
-      // Initialize the map and set its geographical center and zoom level.
-      const worldBounds = L.latLngBounds(
-        L.latLng(-90, -180),
-        L.latLng(90, 180)
-      );
       const map = L.map("map", {
         minZoom: 3,
-        maxBounds: worldBounds, // Add this line
-        maxBoundsViscosity: 1.0, // This makes the boundary "solid"
+        maxBounds: L.latLngBounds(L.latLng(-90, -180), L.latLng(90, 180)),
+        maxBoundsViscosity: 1.0,
       }).setView([34.0, -77.0], 7);
-
-      // Add the tile layer (the background map image) from OpenStreetMap.
 
       const baseLayer = L.tileLayer.provider("Stadia.AlidadeSmoothDark", {
         noWrap: true,
       });
       baseLayer.addTo(map);
 
+      let allVesselsData = [];
+      let trackLine = null;
+      // This will store the most recent data for each unique ship
+      const latestVesselData = new Map();
       /**
        * ------------------------------------------------------------------------
        * CUSTOM ICON DEFINITION
@@ -161,44 +161,64 @@
 
       /**
        * ------------------------------------------------------------------------
-       * DATA FETCHING AND VISUALIZATION
+       * HELPER FUNCTIONS
        * ------------------------------------------------------------------------
        */
-      let allVesselsData = [];
-      let trackLine = null;
-
       function drawVesselTrack(mmsi) {
-        // If a track line already exists, remove it from the map.
         if (trackLine != null) {
           map.removeLayer(trackLine);
         }
-
-        // Filter the main data array to get all points for the selected vessel.
         const vesselTrackPoints = allVesselsData.filter(
           (vessel) => vessel.MMSI == mmsi
         );
-
         if (vesselTrackPoints.length < 2) {
-          console.log("   - Not enough points to draw a track line.");
-          return; // Stop the function here.
+          return;
         }
-
-        // Create a new array containing just the [lat, lon] pairs for the polyline.
         const latLngs = vesselTrackPoints.map((point) => [
           point.LAT,
           point.LON,
         ]);
-
-        // Create the new polyline, add it to the map, and store it so we can remove it later.
         trackLine = L.polyline(latLngs, { color: "red", weight: 2 }).addTo(map);
+        map.fitBounds(trackLine.getBounds(), { padding: [50, 50] });
       }
+
+      function populateAnomalyList(anomalousVessels) {
+        const listElement = document.getElementById("anomaly-list-ul");
+        listElement.innerHTML = ""; // Clear any existing items
+
+        if (anomalousVessels.length === 0) {
+          const listItem = document.createElement("li");
+          listItem.textContent = "No anomalies detected.";
+          listItem.className = "no-anomalies-message";
+          listElement.appendChild(listItem);
+          return;
+        }
+
+        for (const vessel of anomalousVessels) {
+          const listItem = document.createElement("li");
+          listItem.textContent = `MMSI: ${vessel.MMSI}`;
+          listItem.className = "anomaly-item";
+
+          listItem.addEventListener("click", () => {
+            map.setView([vessel.LAT, vessel.LON], 17);
+            drawVesselTrack(vessel.MMSI);
+          });
+
+          listElement.appendChild(listItem);
+        }
+      }
+
+      /**
+       * ------------------------------------------------------------------------
+       * DATA FETCHING AND VISUALIZATION
+       * ------------------------------------------------------------------------
+       */
 
       // Fetch the vessel data from our backend API endpoint.
       fetch("/api/vessels")
         .then((response) => response.json())
         .then((vessels) => {
           allVesselsData = vessels;
-
           map.invalidateSize();
 
           const latestVesselData = new Map();
@@ -207,27 +227,30 @@
           }
           const uniqueVessels = Array.from(latestVesselData.values());
 
+          // Create an array containing only anomalous vessels
+          const anomalousVessels = uniqueVessels.filter((v) => v.is_anomalous);
+
+          // Populate sidebar list with the anomalous vessels
+          populateAnomalyList(anomalousVessels);
+
+          // Plot all unique vessels on the map
           for (const vessel of uniqueVessels) {
             const icon = vessel.is_anomalous ? redIcon : blueIcon;
-
-            const popupContent = `
-              <strong>MMSI:</strong> ${vessel.MMSI}<br>
-              <strong>Speed:</strong> ${vessel.SOG.toFixed(1)} knots<br>
-              <strong>Distance to Port:</strong> ${vessel.dist_to_nearest_port.toFixed(
-                1
-              )} NM<br>
-              ${
-                vessel.is_anomalous && !vessel.is_dark
-                  ? `<strong>Status:</strong> <span style="color: red;">Anomalous (Loitering)</span><br>`
-                  : ""
-              }
-              ${
-                vessel.is_dark
-                  ? `<strong>Status:</strong> <span style="color: red;">Signal Lost (Gone Dark)</span><br>`
-                  : ""
-              }
-            `;
-
+            const popupContent = `<strong>MMSI:</strong> ${
+              vessel.MMSI
+            }<br><strong>Speed:</strong> ${vessel.SOG.toFixed(
+              1
+            )} knots<br><strong>Distance to Port:</strong> ${vessel.dist_to_nearest_port.toFixed(
+              1
+            )} NM<br>${
+              vessel.is_anomalous && !vessel.is_dark
+                ? `<strong>Status:</strong> <span style="color: red;">Anomalous (Loitering)</span><br>`
+                : ""
+            }${
+              vessel.is_dark
+                ? `<strong>Status:</strong> <span style="color: red;">Signal Lost (Gone Dark)</span><br>`
+                : ""
+            }`;
             const marker = L.marker([vessel.LAT, vessel.LON], { icon });
             marker.mmsi = vessel.MMSI;
             marker.on("click", function (e) {
