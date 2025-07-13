@@ -39,7 +39,7 @@ To run this project locally, you will need Python 3 installed.
 1.  **Clone the repository:**
 
     ```bash
-    git clone [https://github.com/paintkid/project-manta.git](https://github.com/paintkid/project-manta.git)
+    git clone https://github.com/paintkid/project-manta.git
     cd project-manta
     ```
 
