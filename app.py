@@ -235,3 +235,12 @@ def get_vessels():
     vessels_json = VESSEL_DATA.to_dict(orient='records')
     return jsonify(vessels_json)
 
+@app.route('/api/anomalies')
+def get_anomalies():
+    """Provides only the anomalous vessel data as a JSON API endpoint."""
+    if VESSEL_DATA.empty:
+        return jsonify([])
+
+    anomalous_vessels = VESSEL_DATA[VESSEL_DATA['is_anomalous'] == True]
+    vessels_json = anomalous_vessels.to_dict(orient='records')
+    return jsonify(vessels_json)
